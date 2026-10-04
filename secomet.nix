@@ -88,7 +88,19 @@ in
   networking.networkmanager.enable = true;
 
   time.timeZone = "Europe/Warsaw";
+  # English messages and sorting, Polish formats (dates, numbers, currency, units, paper size).
   i18n.defaultLocale = "en_US.UTF-8";
+  i18n.extraLocaleSettings = lib.genAttrs [
+    "LC_TIME"
+    "LC_NUMERIC"
+    "LC_MONETARY"
+    "LC_MEASUREMENT"
+    "LC_PAPER"
+    "LC_ADDRESS"
+    "LC_TELEPHONE"
+    "LC_NAME"
+    "LC_IDENTIFICATION"
+  ] (_: "pl_PL.UTF-8");
   # Polish (programmer) layout system-wide: GDM, Xorg and, via useXkbConfig, the text console. GNOME keeps its own
   # per-user input sources (home/seqre.nix).
   services.xserver.xkb.layout = "pl";

@@ -37,6 +37,10 @@
     xkb-options = [ "terminate:ctrl_alt_bksp" ];
   };
 
+  # GNOME Settings → Region → Formats. Overrides the LC_* variables inside the GNOME session, so keep it in step with
+  # i18n.extraLocaleSettings in secomet.nix.
+  dconf.settings."org/gnome/system/locale".region = "pl_PL.UTF-8";
+
   # Personal scripts, e.g. lost-on-boot (what on the ephemeral root would be lost on reboot).
   home.sessionPath = [ "$HOME/.local/bin" ];
 
