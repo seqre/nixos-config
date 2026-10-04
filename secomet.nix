@@ -89,7 +89,10 @@ in
 
   time.timeZone = "Europe/Warsaw";
   i18n.defaultLocale = "en_US.UTF-8";
-  services.xserver.xkb.layout = "us";
+  # Polish (programmer) layout system-wide: GDM, Xorg and, via useXkbConfig, the text console. GNOME keeps its own
+  # per-user input sources (home/seqre.nix).
+  services.xserver.xkb.layout = "pl";
+  console.useXkbConfig = true;
 
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;

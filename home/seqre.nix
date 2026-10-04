@@ -1,5 +1,5 @@
 # Home Manager for seqre. /home is persistent (@home-nixos), so this only manages dotfiles; it is a starting point.
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   home.username = "seqre";
@@ -30,6 +30,11 @@
   xdg.userDirs = {
     enable = true;
     createDirectories = true;
+  };
+
+  dconf.settings."org/gnome/desktop/input-sources" = {
+    sources = [ (lib.hm.gvariant.mkTuple [ "xkb" "pl" ]) ];
+    xkb-options = [ "terminate:ctrl_alt_bksp" ];
   };
 
   # Personal scripts, e.g. lost-on-boot (what on the ephemeral root would be lost on reboot).
