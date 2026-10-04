@@ -161,11 +161,10 @@ in
   };
 
   # Except seqre's Home Manager config (~/.configuration.nix links here), which seqre edits without sudo. The directory
-  # is seqre's too, so editors that save via a temp file and rename work. Applying it still needs sudo.
-  systemd.tmpfiles.rules = [
-    "z /etc/nixos/home 0755 seqre users -"
-    "z /etc/nixos/home/seqre.nix 0644 seqre users -"
-  ];
+  # is seqre's too, so editors that save via a temp file and rename work. Applying it still needs sudo. Recursive `Z`
+  # rather than one `z` per path: tmpfiles refuses a root-owned path under a seqre-owned directory ("unsafe path
+  # transition"), which is what a file freshly written there by root (e.g. a git checkout) looks like.
+  systemd.tmpfiles.rules = [ "Z /etc/nixos/home - seqre users -" ];
 
   # Only these unfree packages (Home Manager uses the system nixpkgs: useGlobalPkgs).
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" ];
