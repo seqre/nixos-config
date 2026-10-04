@@ -1,0 +1,15 @@
+#!/bin/sh
+# Acer Swift Go 14 (SFG14-01): tell the ENE EC that a host OS is running.
+# Windows does this on every boot/resume (DSDT: ECKB._PS0 and FECI._DSM 0x15 "Send SCI EC enable"
+# set bit 6 of EC register 0xA3; the EC latches host mode and clears the bit within ~0.4 s).
+# Without it, the EC stays in its no-OS mode, and Fn+F11 turns the keyboard backlight on but
+# never cycles it to brighter or off. See ~/ISSUES.md, "Keyboard backlight".
+PATH=/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+for try in 1 2 3 4 5; do
+	if v=$(ec-rw 0xa3 2>/dev/null); then
+		ec-rw 0xa3 "$(printf '0x%02x' $((v | 0x40)))" >/dev/null && { echo "EC host mode enabled (0xA3 was $v)"; exit 0; }
+	fi
+	sleep 1
+done
+echo "failed to reach the EC on b94000.i2c @ 0x70" >&2
+exit 1

@@ -1,0 +1,11 @@
+#!/bin/sh
+# ec-rw REG            read one Acer SFG14-01 EC register (DSDT ECNR protocol)
+# ec-rw REG VALUE      write one register (DSDT ECNW protocol: [0x02, 0xB1, reg, value, 0, 0])
+EC_BUS=${EC_BUS:-$(basename "$(ls -d /sys/bus/platform/devices/b94000.i2c/i2c-* 2>/dev/null | head -n1)" | sed "s/^i2c-//")}
+[ -n "$EC_BUS" ] || { echo "EC I2C bus (b94000.i2c) not found" >&2; exit 1; }
+BUS=$EC_BUS
+if [ -n "$2" ]; then
+	i2ctransfer -y $BUS w6@0x70 0x02 0xb1 "$1" "$2" 0 0
+	sleep 0.02
+fi
+i2ctransfer -y $BUS w6@0x70 0x02 0xb0 "$1" 0 0 0 && sleep 0.01 && i2ctransfer -y $BUS w1@0x70 0x01 r1

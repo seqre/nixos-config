@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Acer Swift Go 14 AI (SFG14-01): fingerprint reader (EgisTec 1c7a:0584)
+ *
+ * Windows enumerates the reader at ACPI(_SB_)#ACPI(USB2)#ACPI(RHUB)#ACPI(PRT0).
+ * ACPI USB2 is the controller at 0x0a000000, i.e. usb_1_ss2, which the Acer
+ * DTS (copied from the ThinkPad T14s) leaves disabled. PEP0 votes LDO3_J /
+ * LDO2_J for the HS PHY.
+ *
+ * Unlike usb_mp (PTN3222 @ 0x43/0x4f) and usb_2 (PTN3222 @ 0x47), ACPI lists
+ * no eUSB2 repeater for this controller, and SMB2360 #2 (SPMI SID 0xb) is not
+ * fitted on this board (all transactions fail), so the PHY has no repeater.
+ *
+ * The reader is an internal USB 2.0 device, so only the HS path is enabled
+ * (no QMP PHY, no Type-C/retimer plumbing).
+ */
+
+/dts-v1/;
+/plugin/;
+
+&usb_1_ss2_hsphy {
+	vdd-supply = <&vreg_l3j_0p8>;
+	vdda12-supply = <&vreg_l2j_1p2>;
+
+	status = "okay";
+};
+
+&usb_1_ss2 {
+	phys = <&usb_1_ss2_hsphy>;
+	phy-names = "usb2-phy";
+
+	dr_mode = "host";
+	maximum-speed = "high-speed";
+	qcom,select-utmi-as-pipe-clk;
+
+	status = "okay";
+};

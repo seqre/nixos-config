@@ -1,0 +1,44 @@
+# Home Manager for seqre. /home is persistent (@home-nixos), so this only manages dotfiles; it is a starting point.
+{ config, pkgs, ... }:
+
+{
+  home.username = "seqre";
+  home.homeDirectory = "/home/seqre";
+
+  programs.bash.enable = true;
+  programs.git.enable = true;
+
+  # Claude Code (unfree; allowed for this package only in configuration.nix). No `settings` here, so ~/.claude stays
+  # writable by Claude Code itself.
+  programs.claude-code.enable = true;
+
+  # No profiles declared, so the existing ~/.mozilla profile is left alone.
+  programs.firefox = {
+    enable = true;
+    # The built-in camera only works through PipeWire/libcamera; Firefox's direct V4L2 path would open the raw
+    # CAMSS nodes (no image processing). Ubuntu set this in the snap's user.js; a policy default works for any profile.
+    policies.Preferences."media.webrtc.camera.allow-pipewire" = {
+      Value = true;
+      Status = "default";
+    };
+  };
+
+  # ~/configuration.nix -> this file in the system flake (a live link, not a store copy). The flake is root-owned:
+  # edit with sudo, apply with `sudo nixos-rebuild switch`.
+  home.file."configuration.nix".source = config.lib.file.mkOutOfStoreSymlink "/etc/nixos/home/seqre.nix";
+
+  xdg.userDirs = {
+    enable = true;
+    createDirectories = true;
+  };
+
+  home.packages = with pkgs; [
+    signal-desktop
+    htop
+    ripgrep
+    fd
+    jq
+  ];
+
+  home.stateVersion = "26.11";
+}

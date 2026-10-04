@@ -1,0 +1,229 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Acer Swift Go 14 AI (SFG14-01): corrections to the ThinkPad-T14s-derived DT
+ *
+ * Ground truth is the firmware DSDT (/usr/local/src/fingerprint/dsdt-sfg14-01.dat).
+ * Applied on top of /boot/dtb-fingerprint. See ~/ISSUES.md, "Device tree cleanup".
+ *
+ * 1. Root compatible: drop "lenovo,thinkpad-t14s". Its only kernel user is the
+ *    qseecom allowlist, which already lists "acer,swift-go14-01".
+ *
+ * 2. eUSB2 repeaters (PTN3222 on i2c5 = ACPI I2C6). ACPI:
+ *      USB3 (usb_mp): 0x43 + 0x4f, reset gpio6 + gpio184
+ *      USB4 (usb_2):  0x47,        reset gpio7
+ *    The T14s layout had usb_2 -> 0x43/gpio7 and usb_mp port 1 -> 0x47/gpio6, i.e.
+ *    the right reset per controller but the 0x43/0x47 addresses swapped. Nodes
+ *    can't be renamed from an overlay, so the reset lines and the PHY links are
+ *    swapped instead: node @43 (label eusb5_repeater) now carries gpio6 and serves
+ *    usb_mp port 1, node @47 (label eusb3_repeater) carries gpio7 and serves usb_2.
+ *
+ * 3. Touchscreen @10 on i2c8: this SKU has none (spec sheet; ACPI TSC1._STA is
+ *    gated on the TPLF flag). Disabled.
+ *
+ * 4. Touchpad @68: enable the (previously commented-out) tpad_default pinctrl,
+ *    so gpio3 gets a pull-up as in ACPI (TCPD GpioInt PullUp) instead of the
+ *    pull-down it had.
+ *
+ * 5. WCN7850 (Wi-Fi on pcie4, BT on uart14): power sequencer instead of a bare
+ *    BT enable GPIO. ACPI only switches WLAN_EN (gpio117, QPPX.GWLE) and BT_EN
+ *    (gpio116, BTH0); it never touches the module's supply rails (the T14s'
+ *    gpio214 3.3 V switch has no ACPI user here), so the rails are modelled as
+ *    fixed, always-on supplies.
+ *    hci_qca only uses the sequencer when the BT node has no enable-gpios, and an
+ *    overlay can't delete properties, so build.sh removes enable-gpios/pinctrl-*
+ *    from the BT node with fdtput -d after merging.
+ *
+ * 6. Acer vendor HID (ACPI AHID, HID 1025179A): i2c5 @ 0x71, HID descriptor at
+ *    0x0002, interrupt gpio91 (active low, pull-up). Reports 1025:174B with only
+ *    vendor-defined usages (pages 0xff20/0xff85/0xff05/0x88): exposed as hidraw
+ *    for reverse engineering (EC controls such as fan mode, kbd backlight).
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/* 1. */
+&{/} {
+	compatible = "acer,swift-go14-01", "qcom,x1p42100", "qcom,x1e80100";
+};
+
+/* 2. */
+&eusb5_repeater {	/* redriver@43 */
+	reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&eusb3_reset_n>;
+};
+
+&eusb3_repeater {	/* redriver@47 */
+	reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&eusb5_reset_n>;
+};
+
+&usb_2_hsphy {
+	phys = <&eusb3_repeater>;
+};
+
+&usb_mp_hsphy1 {
+	phys = <&eusb5_repeater>;
+};
+
+/* 3. */
+&{/soc@0/geniqup@ac0000/i2c@a80000/touchscreen@10} {
+	status = "disabled";
+};
+
+/* 4. */
+&{/soc@0/geniqup@bc0000/i2c@b80000/touchpad@68} {
+	pinctrl-0 = <&tpad_default>;
+	pinctrl-names = "default";
+};
+
+/* 5. */
+&{/} {
+	vreg_wcn_0p95: regulator-wcn-0p95 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_0P95";
+		regulator-min-microvolt = <950000>;
+		regulator-max-microvolt = <950000>;
+
+		vin-supply = <&vph_pwr>;
+
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	vreg_wcn_1p9: regulator-wcn-1p9 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_1P9";
+		regulator-min-microvolt = <1900000>;
+		regulator-max-microvolt = <1900000>;
+
+		vin-supply = <&vph_pwr>;
+
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	wcn7850-pmu {
+		compatible = "qcom,wcn7850-pmu";
+
+		vdd-supply = <&vreg_wcn_0p95>;
+		vddio-supply = <&vreg_l15b_1p8>;
+		vddaon-supply = <&vreg_wcn_0p95>;
+		vdddig-supply = <&vreg_wcn_0p95>;
+		vddrfa1p2-supply = <&vreg_wcn_1p9>;
+		vddrfa1p8-supply = <&vreg_wcn_1p9>;
+
+		wlan-enable-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
+		bt-enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-0 = <&wcn_wlan_bt_en>;
+		pinctrl-names = "default";
+
+		regulators {
+			vreg_pmu_rfa_cmn: ldo0 {
+				regulator-name = "vreg_pmu_rfa_cmn";
+			};
+
+			vreg_pmu_aon_0p59: ldo1 {
+				regulator-name = "vreg_pmu_aon_0p59";
+			};
+
+			vreg_pmu_wlcx_0p8: ldo2 {
+				regulator-name = "vreg_pmu_wlcx_0p8";
+			};
+
+			vreg_pmu_wlmx_0p85: ldo3 {
+				regulator-name = "vreg_pmu_wlmx_0p85";
+			};
+
+			vreg_pmu_btcmx_0p85: ldo4 {
+				regulator-name = "vreg_pmu_btcmx_0p85";
+			};
+
+			vreg_pmu_rfa_0p8: ldo5 {
+				regulator-name = "vreg_pmu_rfa_0p8";
+			};
+
+			vreg_pmu_rfa_1p2: ldo6 {
+				regulator-name = "vreg_pmu_rfa_1p2";
+			};
+
+			vreg_pmu_rfa_1p8: ldo7 {
+				regulator-name = "vreg_pmu_rfa_1p8";
+			};
+
+			vreg_pmu_pcie_0p9: ldo8 {
+				regulator-name = "vreg_pmu_pcie_0p9";
+			};
+
+			vreg_pmu_pcie_1p8: ldo9 {
+				regulator-name = "vreg_pmu_pcie_1p8";
+			};
+		};
+	};
+};
+
+&tlmm {
+	wcn_wlan_bt_en: wcn-wlan-bt-en-state {
+		pins = "gpio116", "gpio117";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	ahid_int_n_default: ahid-int-n-state {
+		pins = "gpio91";
+		function = "gpio";
+		bias-pull-up;
+	};
+};
+
+&pcie4_port0 {
+	wifi@0 {
+		compatible = "pci17cb,1107";
+		reg = <0x10000 0x0 0x0 0x0 0x0>;
+
+		vddaon-supply = <&vreg_pmu_aon_0p59>;
+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
+		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
+		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
+		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
+		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+	};
+};
+
+&bluetooth {
+
+	vddaon-supply = <&vreg_pmu_aon_0p59>;
+	vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+	vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+	vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
+	vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
+	vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
+	vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
+};
+
+/* 6. */
+&i2c5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	acer_hid: hid@71 {
+		compatible = "hid-over-i2c";
+		reg = <0x71>;
+
+		hid-descr-addr = <0x2>;
+		interrupts-extended = <&tlmm 91 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-0 = <&ahid_int_n_default>;
+		pinctrl-names = "default";
+	};
+};

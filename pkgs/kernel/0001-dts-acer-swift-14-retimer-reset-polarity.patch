@@ -1,0 +1,57 @@
+From 11eba60588378de080e83c743c13be2adbd76981 Mon Sep 17 00:00:00 2001
+From: Marek 'seqre' Grzelak <git@seqre.dev>
+Date: Sat, 3 Oct 2026 00:01:06 +0200
+Subject: [PATCH] arm64: dts: qcom: x1-acer-swift-14: fix PS8830 retimer reset
+ polarity
+
+The reset line of the Parade PS8830 USB-C retimers is active-low, but
+both retimer nodes describe it as GPIO_ACTIVE_HIGH. The ps883x driver
+releases reset by setting the line's logical value to 0, which with the
+wrong polarity drives the pin low and keeps the retimer in reset.
+
+The retimer then does not respond on I2C, so every mode switch fails:
+
+  ps883x_retimer 3-0008: failed to write conn_status_0: -6
+  pmic_glink_altmode.pmic_glink_altmode pmic_glink.altmode.0: failed to setup retimer to DP: -6
+
+As a result, USB-C docks fall back to USB 2.0 and DisplayPort alt mode
+never comes up, so external monitors are not detected.
+
+Use GPIO_ACTIVE_LOW, as the ThinkPad T14s and the X1E CRD do for the
+same pins (pm8550_gpios 10 and tlmm 176).
+
+Tested on an Acer Swift Go 14 AI (SFG14-01) with a USB-C dock: the
+retimer errors are gone, the dock enumerates at 10 Gbps, and the
+external monitor comes up on DP-1 at 3840x2160.
+
+Fixes: 3d76671d75c2 ("UBUNTU: SAUCE: arm64: dts: qcom: x1-acer-swift-14: Add support for Acer Swift 14")
+Assisted-by: Claude:claude-opus-5-5
+---
+ arch/arm64/boot/dts/qcom/x1-acer-swift-14.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/x1-acer-swift-14.dtsi b/arch/arm64/boot/dts/qcom/x1-acer-swift-14.dtsi
+index 67d2825..be73f6a 100644
+--- a/arch/arm64/boot/dts/qcom/x1-acer-swift-14.dtsi
++++ b/arch/arm64/boot/dts/qcom/x1-acer-swift-14.dtsi
+@@ -753,7 +753,7 @@ typec-mux@8 {
+ 		vddat-supply = <&vreg_rtmr0_1p15>;
+ 		vddio-supply = <&vreg_rtmr0_1p8>;
+ 
+-		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_HIGH>;
++		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_LOW>;
+ 
+ 		retimer-switch;
+ 		orientation-switch;
+@@ -856,7 +856,7 @@ typec-mux@8 {
+ 		vddat-supply = <&vreg_rtmr1_1p15>;
+ 		vddio-supply = <&vreg_rtmr1_1p8>;
+ 
+-		reset-gpios = <&tlmm 176 GPIO_ACTIVE_HIGH>;
++		reset-gpios = <&tlmm 176 GPIO_ACTIVE_LOW>;
+ 
+ 		retimer-switch;
+ 		orientation-switch;
+-- 
+2.53.0
+

@@ -1,0 +1,16 @@
+#!/bin/sh
+# Read-only dump of the Acer SFG14-01 ENE EC RAM (i2c5 = bus 4, addr 0x70), using the
+# DSDT's ECNR protocol: write [0x02, 0xB0, reg, 0, 0, 0], then read 6 bytes at 0x01 (byte 0 = value).
+EC_BUS=${EC_BUS:-$(basename "$(ls -d /sys/bus/platform/devices/b94000.i2c/i2c-* 2>/dev/null | head -n1)" | sed "s/^i2c-//")}
+[ -n "$EC_BUS" ] || { echo "EC I2C bus (b94000.i2c) not found" >&2; exit 1; }
+BUS=$EC_BUS
+for hi in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
+	printf '%s0:' $hi
+	for lo in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
+		i2ctransfer -y $BUS w6@0x70 0x02 0xb0 0x$hi$lo 0 0 0 || exit 1
+		sleep 0.01
+		v=$(i2ctransfer -y $BUS w1@0x70 0x01 r1) || exit 1
+		printf ' %02x' $v
+	done
+	echo
+done

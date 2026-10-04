@@ -1,0 +1,262 @@
+From 973a179428dab36b4ccaadc540fdff1838d0685b Mon Sep 17 00:00:00 2001
+From: Marek 'seqre' Grzelak <git@seqre.dev>
+Date: Sat, 3 Oct 2026 12:49:52 +0200
+Subject: [PATCH] local: soft ISP radial lens shading correction (Lsc algorithm
+ + GPU shader)
+
+---
+ .../internal/software_isp/debayer_params.h    | 12 +++
+ src/ipa/simple/algorithms/lsc.cpp             | 80 +++++++++++++++++++
+ src/ipa/simple/algorithms/lsc.h               | 38 +++++++++
+ src/ipa/simple/algorithms/meson.build         |  1 +
+ src/libcamera/shaders/bayer_1x_packed.frag    | 10 +++
+ src/libcamera/software_isp/debayer_egl.cpp    | 14 ++++
+ src/libcamera/software_isp/debayer_egl.h      |  7 ++
+ 7 files changed, 162 insertions(+)
+ create mode 100644 src/ipa/simple/algorithms/lsc.cpp
+ create mode 100644 src/ipa/simple/algorithms/lsc.h
+
+diff --git a/include/libcamera/internal/software_isp/debayer_params.h b/include/libcamera/internal/software_isp/debayer_params.h
+index 6772b43bc..a11056d2a 100644
+--- a/include/libcamera/internal/software_isp/debayer_params.h
++++ b/include/libcamera/internal/software_isp/debayer_params.h
+@@ -25,6 +25,18 @@ struct DebayerParams {
+ 	float gamma = 1.0;
+ 	float contrastExp = 1.0;
+ 	RGB<float> gains = RGB<float>({ 1.0, 1.0, 1.0 });
++
++	/*
++	 * Radial lens shading correction, applied per channel after black
++	 * level subtraction: gain = 1 + k1 r^2 + k2 r^4 + k3 r^6, with r the
++	 * distance from lscCenter (normalised image coordinates) in units of
++	 * lscRadius pixels. All-zero coefficients disable the correction.
++	 */
++	float lscCenter[2] = { 0.5f, 0.5f };
++	float lscRadius = 1.0f;
++	RGB<float> lscK1 = RGB<float>({ 0.0, 0.0, 0.0 });
++	RGB<float> lscK2 = RGB<float>({ 0.0, 0.0, 0.0 });
++	RGB<float> lscK3 = RGB<float>({ 0.0, 0.0, 0.0 });
+ };
+ 
+ } /* namespace libcamera */
+diff --git a/src/ipa/simple/algorithms/lsc.cpp b/src/ipa/simple/algorithms/lsc.cpp
+new file mode 100644
+index 000000000..3ae4ac003
+--- /dev/null
++++ b/src/ipa/simple/algorithms/lsc.cpp
+@@ -0,0 +1,80 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/*
++ * Radial lens shading correction for the soft ISP (local addition)
++ *
++ * Tuning data:
++ *   - Lsc:
++ *       center: [ x, y ]     # optical centre, normalised image coordinates
++ *       radius: r            # pixels, unit of the polynomial's radius
++ *       strength: s          # optional, scales the correction (default 1)
++ *       k1: [ r, g, b ]      # gain = 1 + k1 r^2 + k2 r^4 + k3 r^6
++ *       k2: [ r, g, b ]
++ *       k3: [ r, g, b ]
++ */
++
++#include "lsc.h"
++
++#include <vector>
++
++#include <libcamera/base/log.h>
++
++namespace libcamera {
++
++namespace ipa::soft::algorithms {
++
++LOG_DEFINE_CATEGORY(IPASoftLsc)
++
++int Lsc::init([[maybe_unused]] IPAContext &context, const ValueNode &tuningData)
++{
++	auto center = tuningData["center"].get<std::vector<float>>();
++	if (center && center->size() == 2) {
++		center_[0] = (*center)[0];
++		center_[1] = (*center)[1];
++	}
++
++	radius_ = tuningData["radius"].get<float>(1.0f);
++	if (radius_ <= 0.0f) {
++		LOG(IPASoftLsc, Error) << "Invalid radius " << radius_;
++		return -EINVAL;
++	}
++
++	float strength = tuningData["strength"].get<float>(1.0f);
++
++	static const char *const names[] = { "k1", "k2", "k3" };
++	for (unsigned int i = 0; i < 3; i++) {
++		auto k = tuningData[names[i]].get<std::vector<float>>();
++		if (!k)
++			continue;
++		if (k->size() != 3) {
++			LOG(IPASoftLsc, Error) << names[i] << " must have 3 values";
++			return -EINVAL;
++		}
++		k_[i] = RGB<float>({ (*k)[0], (*k)[1], (*k)[2] }) * strength;
++	}
++
++	LOG(IPASoftLsc, Debug)
++		<< "centre " << center_[0] << "," << center_[1]
++		<< " radius " << radius_ << " k1 " << k_[0]
++		<< " k2 " << k_[1] << " k3 " << k_[2];
++
++	return 0;
++}
++
++void Lsc::prepare([[maybe_unused]] IPAContext &context,
++		  [[maybe_unused]] const uint32_t frame,
++		  [[maybe_unused]] IPAFrameContext &frameContext,
++		  DebayerParams *params)
++{
++	params->lscCenter[0] = center_[0];
++	params->lscCenter[1] = center_[1];
++	params->lscRadius = radius_;
++	params->lscK1 = k_[0];
++	params->lscK2 = k_[1];
++	params->lscK3 = k_[2];
++}
++
++REGISTER_IPA_ALGORITHM(Lsc, "Lsc")
++
++} /* namespace ipa::soft::algorithms */
++
++} /* namespace libcamera */
+diff --git a/src/ipa/simple/algorithms/lsc.h b/src/ipa/simple/algorithms/lsc.h
+new file mode 100644
+index 000000000..29a9c3b03
+--- /dev/null
++++ b/src/ipa/simple/algorithms/lsc.h
+@@ -0,0 +1,38 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/*
++ * Radial lens shading correction for the soft ISP (local addition)
++ */
++
++#pragma once
++
++#include <array>
++
++#include "algorithm.h"
++
++namespace libcamera {
++
++namespace ipa::soft::algorithms {
++
++class Lsc : public Algorithm
++{
++public:
++	Lsc() = default;
++	~Lsc() = default;
++
++	int init(IPAContext &context, const ValueNode &tuningData) override;
++	void prepare(IPAContext &context,
++		     const uint32_t frame,
++		     IPAFrameContext &frameContext,
++		     DebayerParams *params) override;
++
++private:
++	float center_[2] = { 0.5f, 0.5f };
++	float radius_ = 1.0f;
++	std::array<RGB<float>, 3> k_ = { RGB<float>({ 0.0, 0.0, 0.0 }),
++					 RGB<float>({ 0.0, 0.0, 0.0 }),
++					 RGB<float>({ 0.0, 0.0, 0.0 }) };
++};
++
++} /* namespace ipa::soft::algorithms */
++
++} /* namespace libcamera */
+diff --git a/src/ipa/simple/algorithms/meson.build b/src/ipa/simple/algorithms/meson.build
+index 73c637220..c9f6e5590 100644
+--- a/src/ipa/simple/algorithms/meson.build
++++ b/src/ipa/simple/algorithms/meson.build
+@@ -6,4 +6,5 @@ soft_simple_ipa_algorithms = files([
+     'agc.cpp',
+     'blc.cpp',
+     'ccm.cpp',
++    'lsc.cpp',
+ ])
+diff --git a/src/libcamera/shaders/bayer_1x_packed.frag b/src/libcamera/shaders/bayer_1x_packed.frag
+index 0b641a5f3..27c0b8be6 100644
+--- a/src/libcamera/shaders/bayer_1x_packed.frag
++++ b/src/libcamera/shaders/bayer_1x_packed.frag
+@@ -70,6 +70,11 @@ uniform mat3 ccm;
+ uniform vec3 blacklevel;
+ uniform float gamma;
+ uniform float contrastExp;
++uniform vec2 lsc_center;
++uniform float lsc_radius;
++uniform vec3 lsc_k1;
++uniform vec3 lsc_k2;
++uniform vec3 lsc_k3;
+ 
+ float apply_contrast(float value)
+ {
+@@ -232,6 +237,11 @@ void main(void)
+ 	 */
+ 	rgb = (rgb - blacklevel) / (1.0 - blacklevel);
+ 
++	/* Radial lens shading correction, a no-op when the coefficients are 0 */
++	vec2 lsc_d = (center_pixel - lsc_center * tex_size) / lsc_radius;
++	float lsc_r2 = dot(lsc_d, lsc_d);
++	rgb *= vec3(1.0) + lsc_r2 * (lsc_k1 + lsc_r2 * (lsc_k2 + lsc_r2 * lsc_k3));
++
+ 	/* Apply AWB gains, and saturate each channel at sensor range */
+ 	rgb = clamp(rgb * awb, vec3(0.0), vec3(1.0));
+ 
+diff --git a/src/libcamera/software_isp/debayer_egl.cpp b/src/libcamera/software_isp/debayer_egl.cpp
+index 02651fe87..4412bc1f9 100644
+--- a/src/libcamera/software_isp/debayer_egl.cpp
++++ b/src/libcamera/software_isp/debayer_egl.cpp
+@@ -121,6 +121,11 @@ int DebayerEGL::getShaderVariableLocations(void)
+ 	blackLevelUniformDataIn_ = glGetUniformLocation(programId_, "blacklevel");
+ 	gammaUniformDataIn_ = glGetUniformLocation(programId_, "gamma");
+ 	contrastExpUniformDataIn_ = glGetUniformLocation(programId_, "contrastExp");
++	lscCenterUniform_ = glGetUniformLocation(programId_, "lsc_center");
++	lscRadiusUniform_ = glGetUniformLocation(programId_, "lsc_radius");
++	lscK1Uniform_ = glGetUniformLocation(programId_, "lsc_k1");
++	lscK2Uniform_ = glGetUniformLocation(programId_, "lsc_k2");
++	lscK3Uniform_ = glGetUniformLocation(programId_, "lsc_k3");
+ 
+ 	textureUniformStep_ = glGetUniformLocation(programId_, "tex_step");
+ 	textureUniformSize_ = glGetUniformLocation(programId_, "tex_size");
+@@ -504,6 +509,15 @@ void DebayerEGL::setShaderVariableValues(eGLImage &eglImageIn, const DebayerPara
+ 	glUniform1f(contrastExpUniformDataIn_, params.contrastExp);
+ 	LOG(Debayer, Debug) << " contrastExpUniformDataIn_ " << contrastExpUniformDataIn_ << " data " << params.contrastExp;
+ 
++	/*
++	 * Lens shading correction
++	 */
++	glUniform2f(lscCenterUniform_, params.lscCenter[0], params.lscCenter[1]);
++	glUniform1f(lscRadiusUniform_, params.lscRadius);
++	glUniform3f(lscK1Uniform_, params.lscK1[0], params.lscK1[1], params.lscK1[2]);
++	glUniform3f(lscK2Uniform_, params.lscK2[0], params.lscK2[1], params.lscK2[2]);
++	glUniform3f(lscK3Uniform_, params.lscK3[0], params.lscK3[1], params.lscK3[2]);
++
+ 	return;
+ }
+ 
+diff --git a/src/libcamera/software_isp/debayer_egl.h b/src/libcamera/software_isp/debayer_egl.h
+index d6223f3a9..72c227c86 100644
+--- a/src/libcamera/software_isp/debayer_egl.h
++++ b/src/libcamera/software_isp/debayer_egl.h
+@@ -111,6 +111,13 @@ private:
+ 	/* Contrast */
+ 	GLint contrastExpUniformDataIn_;
+ 
++	/* Lens shading correction */
++	GLint lscCenterUniform_;
++	GLint lscRadiusUniform_;
++	GLint lscK1Uniform_;
++	GLint lscK2Uniform_;
++	GLint lscK3Uniform_;
++
+ 	Size nativeOutputSize_;
+ 	Rectangle window_;
+ 	std::unique_ptr<SwStatsCpu> stats_;
+-- 
+2.53.0
+

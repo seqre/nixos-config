@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: CC0-1.0
+# OV05C10 on the Acer Swift Go 14 (SFG14-01).
+#
+# BlackLevel: the sensor's black level (64 at 10 bit, measured from the unlit corners of the full pixel array)
+# instead of auto-detection, which overestimates it now that the driver crops away the dark corners.
+#
+# Ccm: colour correction matrices from the Windows Qualcomm tuning (com.qti.tuned.ov05c10.bin, module cc13, the
+# low-light AEC region, CCT ranges 2300-2600/2750-3300/3650-4300/4650-6800/7000-7500 K, rows R,G,B), blended 70%
+# towards identity: full strength doubles colour noise for little extra saturation. Full-strength values:
+#   2450: [ 1.770, -0.775, 0.005, -0.590, 1.726, -0.136, -0.710, -1.339, 3.049  ]
+#   3025: [ 1.531, -0.734, 0.204, -0.516, 1.524, -0.009, -0.419, -1.166, 2.586  ]
+#   3975: [ 1.814, -1.047, 0.233, -0.302, 1.496, -0.194, -0.042, -1.002, 2.044  ]
+#   5725: [ 2.039, -0.992, -0.046, -0.251, 1.580, -0.328, 0.003, -0.895, 1.892  ]
+#   7250: [ 1.970, -1.076, 0.105, -0.219, 1.437, -0.218, 0.051, -0.934, 1.883  ]
+%YAML 1.1
+---
+version: 1
+algorithms:
+  - BlackLevel:
+      blackLevel: 4096
+  - Lsc:
+      center: [ 0.5050, 0.5125 ]
+      radius: 1500
+      strength: 0.8
+      k1: [ 3.4380, 3.3036, 3.1388 ]
+      k2: [ -0.6032, -1.1282, -0.9883 ]
+      k3: [ 1.8712, 2.1534, 2.1111 ]
+  - Awb:
+  - Ccm:
+      ccms:
+        - ct: 2450
+          ccm: [ 1.539, -0.542, 0.004, -0.413, 1.508, -0.095, -0.497, -0.937, 2.434 ]
+        - ct: 3025
+          ccm: [ 1.372, -0.514, 0.143, -0.361, 1.367, -0.006, -0.293, -0.816, 2.110 ]
+        - ct: 3975
+          ccm: [ 1.570, -0.733, 0.163, -0.211, 1.347, -0.136, -0.029, -0.701, 1.731 ]
+        - ct: 5725
+          ccm: [ 1.727, -0.694, -0.032, -0.176, 1.406, -0.230, 0.002, -0.626, 1.624 ]
+        - ct: 7250
+          ccm: [ 1.679, -0.753, 0.073, -0.153, 1.306, -0.153, 0.036, -0.654, 1.618 ]
+  - Adjust:
+  - Agc:
+...

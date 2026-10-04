@@ -1,0 +1,69 @@
+--- a/drivers/media/platform/qcom/camss/camss.c	2026-10-03 17:10:48.747779476 +0200
++++ b/drivers/media/platform/qcom/camss/camss.c	2026-10-03 17:10:48.749660839 +0200
+@@ -4473,6 +4473,35 @@
+ 	},
+ };
+ 
++/*
++ * X1P42100 (Purwa) is a cut-down Hamoa CAMSS: only CSIPHY0/CSIPHY4 and no
++ * VFE1. Based on "media: qcom: camss: Add X1P42100 support" (Wenmeng Liu).
++ */
++static const struct camss_subdev_resources csiphy_res_x1p42100[] = {
++	/* CSIPHY0 */
++	{
++		.csiphy = {
++			.id = 0,
++			.hw_ops = &csiphy_ops_3ph_1_0,
++			.formats = &csiphy_formats_sdm845
++		},
++	},
++	/* CSIPHY4 */
++	{
++		.csiphy = {
++			.id = 4,
++			.hw_ops = &csiphy_ops_3ph_1_0,
++			.formats = &csiphy_formats_sdm845
++		},
++	},
++};
++
++static const struct camss_subdev_resources vfe_res_x1p42100[] = {
++	vfe_res_x1e80100[0],	/* IFE0 */
++	vfe_res_x1e80100[2],	/* IFE_LITE_0 */
++	vfe_res_x1e80100[3],	/* IFE_LITE_1 */
++};
++
+ static const struct resources_icc icc_res_x1e80100[] = {
+ 	{
+ 		.name = "ahb",
+@@ -5753,6 +5782,22 @@
+ 	.vfe_num = ARRAY_SIZE(vfe_res_x1e80100),
+ };
+ 
++static const struct camss_resources x1p42100_resources = {
++	.version = CAMSS_X1E80100,
++	.pd_name = "top",
++	.csiphy_res = csiphy_res_x1p42100,
++	.tpg_res = tpg_res_x1e80100,
++	.csid_res = csid_res_x1e80100,
++	.vfe_res = vfe_res_x1p42100,
++	.csid_wrapper_res = &csid_wrapper_res_x1e80100,
++	.icc_res = icc_res_x1e80100,
++	.icc_path_num = ARRAY_SIZE(icc_res_x1e80100),
++	.csiphy_num = ARRAY_SIZE(csiphy_res_x1p42100),
++	.tpg_num = ARRAY_SIZE(tpg_res_x1e80100),
++	.csid_num = ARRAY_SIZE(csid_res_x1e80100),
++	.vfe_num = ARRAY_SIZE(vfe_res_x1p42100),
++};
++
+ static const struct of_device_id camss_dt_match[] = {
+ 	{ .compatible = "qcom,msm8916-camss", .data = &msm8916_resources },
+ 	{ .compatible = "qcom,msm8939-camss", .data = &msm8939_resources },
+@@ -5772,6 +5817,7 @@
+ 	{ .compatible = "qcom,sm8550-camss", .data = &sm8550_resources },
+ 	{ .compatible = "qcom,sm8650-camss", .data = &sm8650_resources },
+ 	{ .compatible = "qcom,x1e80100-camss", .data = &x1e80100_resources },
++	{ .compatible = "qcom,x1p42100-camss", .data = &x1p42100_resources },
+ 	{ }
+ };
+ 
