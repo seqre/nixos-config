@@ -101,6 +101,16 @@ in
         "/var/lib/udisks2"
       ];
       files = [ "/etc/machine-id" ];
+      # Claude Code run via sudo keeps its login and settings in root's home.
+      users.root = {
+        directories = [
+          {
+            directory = ".claude";
+            mode = "0700";
+          }
+        ];
+        files = [ ".claude.json" ];
+      };
     };
 
     # /var/db/sudo/lectured is gone every boot.
