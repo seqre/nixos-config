@@ -6,8 +6,8 @@
 }:
 
 let
-  fsUuid = "b9218cc9-197b-4d2a-8013-3deee2e6147c"; # nvme0n1p5, shared with Ubuntu
-  espUuid = "A48E-20FE"; # nvme0n1p1, shared with Ubuntu and Windows
+  fsUuid = "b9218cc9-197b-4d2a-8013-3deee2e6147c"; # nvme0n1p5
+  espUuid = "A48E-20FE"; # nvme0n1p1, shared with Windows
   btrfs = subvol: extra: {
     device = "/dev/disk/by-uuid/${fsUuid}";
     fsType = "btrfs";
@@ -38,11 +38,6 @@ in
       editor = false;
       configurationLimit = 10;
       # Loads the DTB from hardware.deviceTree (installDeviceTree defaults to on with deviceTree.name set).
-      extraEntries."ubuntu.conf" = ''
-        title Ubuntu (shim + GRUB)
-        efi /EFI/ubuntu/shimaa64.efi
-        sort-key z-ubuntu
-      '';
       # Windows Boot Manager is detected automatically.
     };
     efi = {
@@ -57,9 +52,7 @@ in
     inherit fsUuid;
   };
 
-  # Same btrfs filesystem as Ubuntu. / (@nixos) is recreated empty on every boot (modules/impermanence.nix).
-  # @nix is shared with the Nix install on Ubuntu, @swap's swapfile too (only one OS runs at a time). Ubuntu's own
-  # subvolumes are not mounted.
+  # / (@nixos) is recreated empty on every boot (modules/impermanence.nix).
   fileSystems = {
     "/" = btrfs "@nixos" [ ];
     "/persist" = btrfs "@persist" [ ];
@@ -124,8 +117,7 @@ in
   };
 
   # Weekly GC of store paths not referenced by a generation from the last 14 days (old systemd-boot entries go with
-  # them on the next rebuild). /nix is shared with Ubuntu's Nix while it exists: its profiles under
-  # /nix/var/nix/profiles are GC roots too, but its `result` links in Ubuntu's filesystem are invisible from here.
+  # them on the next rebuild).
   nix.gc = {
     automatic = true;
     dates = "weekly";

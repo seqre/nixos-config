@@ -41,7 +41,7 @@
         ];
       };
 
-      # Buildable on their own, e.g. `nix build .#kernel` from Ubuntu.
+      # Buildable on their own, e.g. `nix build .#kernel`.
       packages.${system} = {
         inherit kernel;
         dtbs = pkgs.callPackage ./pkgs/dtb { inherit kernel; };

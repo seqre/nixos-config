@@ -1,8 +1,9 @@
 # nixos-secomet
 
-NixOS for the Acer Swift Go 14 AI (SFG14-01, Snapdragon X x1p42100), installed next to the working Ubuntu on the
-same btrfs filesystem (`nvme0n1p5`) and the shared ESP (`nvme0n1p1`, grown to 2.2 GB). The hardware fixes are the
-ones documented in `~/ISSUES.md` on Ubuntu; each file says which section it comes from.
+NixOS for the Acer Swift Go 14 AI (SFG14-01, Snapdragon X x1p42100), on btrfs (`nvme0n1p5`) with the ESP
+(`nvme0n1p1`, grown to 2.2 GB) shared with Windows. It was first installed next to Ubuntu, where the hardware was
+brought up; Ubuntu was removed afterwards (`~/installation-docs/UBUNTU-REMOVAL.md`). The hardware fixes are the ones
+documented in `~/installation-docs/ISSUES.md`; each file says which section it comes from.
 
 This repo is **`/etc/nixos`** on NixOS: persisted in `@persist` (`/persist/etc/nixos`, bind-mounted by impermanence),
 owned by root. Edit with sudo, apply with `sudo nixos-rebuild switch`.
@@ -13,22 +14,19 @@ After changing those files by hand, run `sudo nix flake update acer-firmware`, o
 
 ## Layout on disk
 
-| Subvolume                 | Ubuntu         | NixOS               |
-|---------------------------|----------------|---------------------|
-| `@nix`                    | `/nix` (host Nix, `nix-setup-systemd`) | `/nix` (same store, same DB) |
-| `@nixos`                  | (not mounted)  | `/`, **recreated empty on every boot** |
-| `@nixos-old/<timestamp>`  | (not mounted)  | previous roots, deleted after 14 days |
-| `@persist`                | (not mounted)  | `/persist`: the state that survives, including this repo (`/etc/nixos`) |
-| `@home-nixos`             | (not mounted)  | `/home` (persistent; dotfiles via Home Manager) |
-| `@home`                   | `/home`        | (not mounted)       |
-| `@swap`                   | `/swap`        | `/swap` (same swapfile) |
-| `@nixos-pre-impermanence` | (not mounted)  | the first, mutable-root install; safe to delete |
+| Subvolume                 | Mounted at          |
+|---------------------------|---------------------|
+| `@nix`                    | `/nix`              |
+| `@nixos`                  | `/`, **recreated empty on every boot** |
+| `@nixos-old/<timestamp>`  | (not mounted) previous roots, deleted after 14 days |
+| `@persist`                | `/persist`: the state that survives, including this repo (`/etc/nixos`) |
+| `@home-nixos`             | `/home` (persistent; dotfiles via Home Manager) |
+| `@swap`                   | `/swap` (swapfile)  |
 
-`/mnt/btrfs-top` (automount) on NixOS is the btrfs top level, for looking at `@nixos-old/`.
+`/mnt/btrfs-top` (automount) is the btrfs top level, for looking at `@nixos-old/`.
 
-Snapper only snapshots Ubuntu's `@`. NixOS generations are its rollback mechanism. `@nix` is shared:
-a plain `nix-collect-garbage` on either side is safe (both OSes' profiles are GC roots), `nix-collect-garbage -d`
-deletes old NixOS generations too.
+NixOS generations are the rollback mechanism for the system; snapper covers `/home` and `/persist` (see Snapshots).
+`nix-collect-garbage -d` deletes all old NixOS generations.
 
 ## Impermanence
 
@@ -38,7 +36,7 @@ deletes old NixOS generations too.
   NetworkManager,AccountsService,gdm,colord,upower,power-profiles-daemon,udisks2}`,
   `/etc/NetworkManager/system-connections`, `/etc/machine-id`.
 - Users are declarative (`users.mutableUsers = false`). `seqre`'s password hash is in `/persist/secrets/seqre.passwd`
-  (root-only; copied from Ubuntu's `/etc/shadow`). To change it: `mkpasswd -m yescrypt` and write the hash there.
+  (root-only; originally copied from Ubuntu's `/etc/shadow`). To change it: `mkpasswd -m yescrypt` and write the hash there.
 - Anything else written outside `/home`, `/nix` and `/persist` is gone after a reboot. To keep something, add it to
   `modules/impermanence.nix`, move the current copy into `/persist/...`, rebuild.
 
@@ -50,14 +48,12 @@ deletes old NixOS generations too.
    NixOS never writes UEFI variables (`canTouchEfiVariables = false`). **Boot order:** this is Insyde firmware, which
    rebuilds `BootOrder` from its own setup list at every power-on (new entries go last). Set it in the firmware setup
    (F2 → Boot → Boot priority order); `efibootmgr -n 0003` works for one boot.
-2. systemd-boot menu: NixOS generations (kernel, initrd and DTB copied to `\EFI\nixos`), "Ubuntu (shim + GRUB)",
-   Windows Boot Manager (auto-detected).
-3. Fallbacks: `Boot0000` (Ubuntu shim/GRUB) still exists, and Ubuntu's GRUB has "NixOS (systemd-boot)"
-   (`/etc/grub.d/46_nixos`), which chainloads systemd-boot. `\EFI\BOOT\BOOTAA64.EFI` is systemd-boot now (bootctl
-   install replaced the copy of Ubuntu's shim; old ESP: `/var/backups/esp-before-systemd-boot-2026-10-03.tar` on
-   Ubuntu).
-4. GRUB's `cutmem` workaround is not applied by systemd-boot. RAM on this 16 GB model ends at `0xbffffffff`, below
-   the cut range.
+2. systemd-boot menu: NixOS generations (kernel, initrd and DTB copied to `\EFI\nixos`), Windows Boot Manager
+   (auto-detected).
+3. Fallback: `\EFI\BOOT\BOOTAA64.EFI` is systemd-boot too (installed by `bootctl`). The ESP as it was before
+   systemd-boot is in `~/ubuntu-backup/backups/esp-before-systemd-boot-2026-10-03.tar`.
+4. The `cutmem` workaround Ubuntu's GRUB applied is not needed: RAM on this 16 GB model ends at `0xbffffffff`,
+   below the cut range.
 
 ## What's where
 
@@ -76,7 +72,6 @@ deletes old NixOS generations too.
 - `modules/firmware-sync.nix`, `modules/snapshots.nix`: see below.
 - `secomet.nix`: the host config: boot loader, filesystems, GNOME, users, Home Manager, Nix GC.
 - `home/seqre.nix`: Home Manager config for seqre, linked as `~/configuration.nix`.
-- `install-from-ubuntu.sh`: (re)install from Ubuntu.
 
 ## Firmware sync from Windows
 
@@ -104,12 +99,7 @@ real backups (snapper snapshots live on the same disk).
 
 ## Commands
 
-From NixOS:
-
     sudo nixos-rebuild switch
 
-From Ubuntu (recovery only; reinstalls into @nixos and the ESP):
-
-    sudo mkdir -p /mnt/nixos-persist
-    sudo mount -o subvol=@persist UUID=b9218cc9-197b-4d2a-8013-3deee2e6147c /mnt/nixos-persist
-    sudo /mnt/nixos-persist/etc/nixos/install-from-ubuntu.sh
+Recovery: pick an older generation in the systemd-boot menu. The old `install-from-ubuntu.sh` (installs this flake
+into `@nixos` from another Linux on the same disk) is in git history.
