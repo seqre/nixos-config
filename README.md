@@ -39,6 +39,10 @@ NixOS generations are the rollback mechanism for the system; snapper covers `/ho
   (root-only; originally copied from Ubuntu's `/etc/shadow`). To change it: `mkpasswd -m yescrypt` and write the hash there.
 - Anything else written outside `/home`, `/nix` and `/persist` is gone after a reboot. To keep something, add it to
   `modules/impermanence.nix`, move the current copy into `/persist/...`, rebuild.
+- Before shutting down, run **`lost-on-boot`** (`~seqre/.local/bin/lost-on-boot`, re-runs itself with sudo) to see what is on
+  the root right now and would be lost. It reads the raw `@nixos` through `/mnt/btrfs-top` and hides what activation
+  recreates anyway. `-t` adds tmp and caches, `-s` gives per-directory counts, `-n` prints a persistence snippet,
+  `-a` turns off all filtering. Extra ignore globs: `~/.config/lost-on-boot/ignore`.
 
 ## Boot path
 

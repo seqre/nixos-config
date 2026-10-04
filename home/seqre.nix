@@ -32,6 +32,9 @@
     createDirectories = true;
   };
 
+  # Personal scripts, e.g. lost-on-boot (what on the ephemeral root would be lost on reboot).
+  home.sessionPath = [ "$HOME/.local/bin" ];
+
   home.packages = with pkgs; [
     signal-desktop
     htop
