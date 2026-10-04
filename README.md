@@ -75,7 +75,7 @@ NixOS generations are the rollback mechanism for the system; snapper covers `/ho
 - `modules/fingerprint.nix`: SDCP libfprint/fprintd.
 - `modules/firmware-sync.nix`, `modules/snapshots.nix`: see below.
 - `secomet.nix`: the host config: boot loader, filesystems, GNOME, users, Home Manager, Nix GC.
-- `home/seqre.nix`: Home Manager config for seqre, linked as `~/configuration.nix`.
+- `home/seqre.nix`: Home Manager config for seqre, linked as `~/.configuration.nix`; owned by seqre (editable without sudo), applying still needs sudo.
 
 ## Firmware sync from Windows
 

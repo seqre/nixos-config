@@ -23,9 +23,9 @@
     };
   };
 
-  # ~/configuration.nix -> this file in the system flake (a live link, not a store copy). The flake is root-owned:
-  # edit with sudo, apply with `sudo nixos-rebuild switch`.
-  home.file."configuration.nix".source = config.lib.file.mkOutOfStoreSymlink "/etc/nixos/home/seqre.nix";
+  # ~/.configuration.nix -> this file in the system flake (a live link, not a store copy). This file is owned by
+  # seqre (systemd.tmpfiles in secomet.nix), so edit it directly; apply with `sudo nixos-rebuild switch`.
+  home.file.".configuration.nix".source = config.lib.file.mkOutOfStoreSymlink "/etc/nixos/home/seqre.nix";
 
   xdg.userDirs = {
     enable = true;

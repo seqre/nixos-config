@@ -160,6 +160,13 @@ in
     config.safe.directory = "/etc/nixos";
   };
 
+  # Except seqre's Home Manager config (~/.configuration.nix links here), which seqre edits without sudo. The directory
+  # is seqre's too, so editors that save via a temp file and rename work. Applying it still needs sudo.
+  systemd.tmpfiles.rules = [
+    "z /etc/nixos/home 0755 seqre users -"
+    "z /etc/nixos/home/seqre.nix 0644 seqre users -"
+  ];
+
   # Only these unfree packages (Home Manager uses the system nixpkgs: useGlobalPkgs).
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" ];
 
