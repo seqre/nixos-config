@@ -171,13 +171,18 @@ in
   # transition"), which is what a file freshly written there by root (e.g. a git checkout) looks like.
   systemd.tmpfiles.rules = [ "Z /etc/nixos/home - seqre users -" ];
 
+  # Default editor for everyone (EDITOR=nvim, so also root and sudoedit); this also installs neovim.
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+  };
+
   # Only these unfree packages (Home Manager uses the system nixpkgs: useGlobalPkgs).
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" ];
 
   environment.systemPackages = with pkgs; [
     git
     vim
-    neovim
     ranger
     fastfetch
     pciutils
