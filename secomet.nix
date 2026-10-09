@@ -85,7 +85,12 @@ in
   swapDevices = [ { device = "/swap/swapfile"; } ];
 
   networking.hostName = "secomet";
-  networking.networkmanager.enable = true;
+  networking.networkmanager = {
+    enable = true;
+    plugins = with pkgs; [
+      networkmanager-openvpn
+    ];
+  };
 
   time.timeZone = "Europe/Warsaw";
   # English messages and sorting, Polish formats (dates, numbers, currency, units, paper size).
