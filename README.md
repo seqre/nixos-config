@@ -73,6 +73,8 @@ NixOS generations are the rollback mechanism for the system; snapper covers `/ho
 - `modules/camera.nix`: libcamera with the lens shading patch (`pkgs/libcamera/`) for PipeWire/WirePlumber/`cam`,
   OV05C10 tuning file (`files/ov05c10.yaml`).
 - `modules/fingerprint.nix`: SDCP libfprint/fprintd.
+- `modules/printing.nix`: CUPS + ipp-usb (IPP over USB), with a declared PostScript queue for the HP M553 (it drops PDF
+  jobs); the PPD comes from hplip, but hplip itself is not installed.
 - `modules/firmware-sync.nix`, `modules/snapshots.nix`: see below.
 - `secomet.nix`: the host config: boot loader, filesystems, GNOME, users, Home Manager, Nix GC.
 - `home/seqre.nix`: Home Manager config for seqre, linked as `~/.configuration.nix`; owned by seqre (editable without sudo), applying still needs sudo.

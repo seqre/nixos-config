@@ -99,6 +99,7 @@ in
         "/var/lib/upower"
         "/var/lib/power-profiles-daemon"
         "/var/lib/udisks2"
+        "/var/lib/ipp-usb/dev" # port per USB printer: the CUPS queue's URI names it (modules/printing.nix)
       ];
       files = [ "/etc/machine-id" ];
       # Claude Code run via sudo keeps its login and settings in root's home.
