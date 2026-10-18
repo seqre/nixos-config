@@ -92,6 +92,24 @@ in
     ];
   };
 
+  # Wi-Fi country PL. ath12k's firmware restarts on every resume in the world regdom (00), where all of 5 GHz is
+  # passive-scan and all of 6 GHz is allowed: a full scan took 14.7 s (vs 4.8 s with PL), delaying the reconnect.
+  # The sleep hook runs inside systemd-sleep, before NetworkManager hears about the wake-up and starts scanning.
+  hardware.wirelessRegulatoryDatabase = true;
+  boot.extraModprobeConfig = "options cfg80211 ieee80211_regdom=PL";
+  environment.etc."systemd/system-sleep/wifi-regdom".source = pkgs.writeShellScript "wifi-regdom" ''
+    [ "$1" = post ] || exit 0
+    iw=${pkgs.iw}/bin/iw
+    phy=$($iw reg get | ${pkgs.gnused}/bin/sed -n '/^phy#/{n;s/^country \([A-Z0-9]*\):.*/\1/p;q}')
+    if [ "$phy" != PL ]; then
+      # cfg80211 ignores a hint equal to the current one, so drop it first to reach the firmware again.
+      $iw reg set 00
+      $iw reg set PL
+    fi
+    echo "wifi-regdom: phy was ''${phy:-unknown}, now $($iw reg get | ${pkgs.gnused}/bin/sed -n '/^phy#/{n;p;q}')" \
+      | ${pkgs.util-linux}/bin/logger -t wifi-regdom
+  '';
+
   time.timeZone = "Europe/Warsaw";
   # English messages and sorting, Polish formats (dates, numbers, currency, units, paper size).
   i18n.defaultLocale = "en_US.UTF-8";
