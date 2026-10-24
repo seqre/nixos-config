@@ -28,6 +28,7 @@ in
     ./modules/firmware-sync.nix
     ./modules/snapshots.nix
     ./modules/printing.nix
+    ./modules/nas.nix
   ];
 
   # systemd-boot on the shared ESP (\EFI\systemd, kernels in \EFI\nixos, entries in \loader). NixOS never writes UEFI
