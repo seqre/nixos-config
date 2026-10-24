@@ -6,7 +6,34 @@
   home.homeDirectory = "/home/seqre";
 
   programs.bash.enable = true;
-  programs.git.enable = true;
+  programs.git = {
+    enable = true;
+
+    settings = {
+      user = {
+        name = "Marek Grzelak";
+        email = "git@seqre.dev";
+      };
+      init.defaultBranch = "main";
+      pull.rebase = true;
+      push.autoSetupRemote = true;
+      # Remember conflict resolutions and replay them when the same conflict comes back (e.g. repeated rebases).
+      rerere.enabled = true;
+      diff.colorMoved = "default";
+    };
+
+    #ignores = [ ".direnv/" "result" "result-*" ];
+  };
+
+  # delta as git's pager for diff/log/show/blame.
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      navigate = true; # n/N to jump between files
+      line-numbers = true;
+    };
+  };
 
   # Claude Code (unfree; allowed for this package only in configuration.nix). No `settings` here, so ~/.claude stays
   # writable by Claude Code itself.
@@ -42,7 +69,10 @@
   dconf.settings."org/gnome/system/locale".region = "pl_PL.UTF-8";
 
   # Personal scripts, e.g. lost-on-boot (what on the ephemeral root would be lost on reboot).
-  home.sessionPath = [ "$HOME/.local/bin" ];
+  home.sessionPath = [
+    "$HOME/.local/bin"
+    "$HOME/.cargo/bin"
+  ];
 
   home.packages = with pkgs; [
     signal-desktop
@@ -68,6 +98,10 @@
     opencode
     jujutsu
   ];
+
+  home.shellAliases = {
+  	j = "just";
+  };
 
   home.stateVersion = "26.11";
 }
