@@ -46,10 +46,27 @@
 
   home.packages = with pkgs; [
     signal-desktop
+    zed-editor
     htop
     ripgrep
     fd
     jq
+    gh
+    gimp
+    inkscape
+    libreoffice
+    # Anki breaks under XWayland; force its native Wayland backend (binary and desktop entry both resolve to this wrapper).
+    (symlinkJoin {
+      name = "anki-wayland";
+      paths = [ anki ];
+      nativeBuildInputs = [ makeWrapper ];
+      postBuild = "wrapProgram $out/bin/anki --set ANKI_WAYLAND 1";
+    })
+    just
+    fzf
+    ripgrep
+    opencode
+    jujutsu
   ];
 
   home.stateVersion = "26.11";

@@ -214,6 +214,7 @@ in
     evtest
     btrfs-progs
     efibootmgr
+    python3
   ];
 
   system.stateVersion = "26.11";
