@@ -94,13 +94,12 @@
     })
     just
     fzf
-    ripgrep
     opencode
     jujutsu
   ];
 
   home.shellAliases = {
-  	j = "just";
+    j = "just";
   };
 
   home.stateVersion = "26.11";
