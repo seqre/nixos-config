@@ -96,6 +96,9 @@
     fzf
     opencode
     jujutsu
+    # GNOME Shell extensions: only installed here; enable/disable them in the Extensions app (kept in dconf, not
+    # managed by Home Manager).
+    gnomeExtensions.appindicator # tray icons (AppIndicator/StatusNotifierItem, e.g. Signal) in the top panel
   ];
 
   home.shellAliases = {
