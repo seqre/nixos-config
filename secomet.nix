@@ -84,7 +84,13 @@ in
       ];
     };
   };
-  swapDevices = [ { device = "/swap/swapfile"; } ];
+  # NixOS recreates the file with `btrfs filesystem mkswapfile` at boot whenever its size differs from `size` (MiB).
+  swapDevices = [
+    {
+      device = "/swap/swapfile";
+      size = 20 * 1024;
+    }
+  ];
 
   networking.hostName = "secomet";
   networking.networkmanager = {
