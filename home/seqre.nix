@@ -50,6 +50,15 @@
     };
   };
 
+  # Started at login (links into ~/.config/autostart; other entries there are left alone).
+  xdg.autostart = {
+    enable = true;
+    entries = [
+      "${config.programs.firefox.finalPackage}/share/applications/firefox.desktop"
+      "${pkgs.signal-desktop}/share/applications/signal.desktop"
+    ];
+  };
+
   # ~/.configuration.nix -> this file in the system flake (a live link, not a store copy). This file is owned by
   # seqre (systemd.tmpfiles in secomet.nix), so edit it directly; apply with `sudo nixos-rebuild switch`.
   home.file.".configuration.nix".source = config.lib.file.mkOutOfStoreSymlink "/etc/nixos/home/seqre.nix";
