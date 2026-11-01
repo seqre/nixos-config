@@ -15,6 +15,7 @@
       url = "path:/etc/nixos/blobs/firmware";
       flake = false;
     };
+    eventually.url = "git+file:///home/seqre/dev/eventually";
   };
 
   outputs =
@@ -24,6 +25,7 @@
       home-manager,
       impermanence,
       acer-firmware,
+      eventually,
     }:
     let
       system = "aarch64-linux";
@@ -37,6 +39,7 @@
           { nixpkgs.hostPlatform = system; }
           home-manager.nixosModules.home-manager
           impermanence.nixosModules.impermanence
+	  eventually.nixosModules.default
           ./secomet.nix
         ];
       };

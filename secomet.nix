@@ -183,6 +183,24 @@ in
     ];
   };
 
+  services.eventually = {
+    enable = true;
+    port = 2137;
+    secretKeyFile = "/home/seqre/.eventually/secret-key";
+    admin = {
+      username = "admin";
+      passwordFile = "/home/seqre/.eventually/admin-password";
+    };
+  };
+  # The database lives in /var/lib/eventually (the service can't reach /home: ProtectHome, DynamicUser). With
+  # DynamicUser that is a symlink to /var/lib/private/eventually, so persist the real directory.
+  environment.persistence."/persist".directories = [
+    {
+      directory = "/var/lib/private";
+      mode = "0700";
+    }
+  ];
+
   # This flake is /etc/nixos (persisted in /persist/etc/nixos, owned by root): edit with sudo, apply with
   # `sudo nixos-rebuild switch` (builds nixosConfigurations.secomet = the hostname). safe.directory lets other users
   # run read-only git commands (log, diff, status) in the root-owned repo.
