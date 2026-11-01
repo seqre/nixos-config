@@ -151,6 +151,7 @@ in
       "wheel"
       "video"
       "networkmanager"
+      "ydotool"
     ];
     hashedPasswordFile = "/persist/secrets/seqre.passwd";
   };
@@ -214,6 +215,10 @@ in
   # rather than one `z` per path: tmpfiles refuses a root-owned path under a seqre-owned directory ("unsafe path
   # transition"), which is what a file freshly written there by root (e.g. a git checkout) looks like.
   systemd.tmpfiles.rules = [ "Z /etc/nixos/home - seqre users -" ];
+
+  # ydotoold + ydotool for members of the ydotool group. Handy types its transcriptions through it. Don't install wtype:
+  # it doesn't work on GNOME, but Handy would still pick it first.
+  programs.ydotool.enable = true;
 
   # Default editor for everyone (EDITOR=nvim, so also root and sudoedit); this also installs neovim.
   programs.neovim = {
