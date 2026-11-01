@@ -64,7 +64,6 @@ in
     "ubwc_config"
     "socinfo"
   ];
-  boot.initrd.systemd.enable = true;
   # Root shell in the initrd if mounting root fails (root has no password otherwise). Bring-up only: turn off
   # once NixOS boots reliably.
   boot.initrd.systemd.emergencyAccess = true;
