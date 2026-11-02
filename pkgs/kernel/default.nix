@@ -1,7 +1,11 @@
 # The jg kernel (Jens Glathe's Snapdragon X tree), the same 7.2.2-jg-0 source Ubuntu runs.
 # `config` is Ubuntu's /boot/config-7.2.2-jg-0-qcom-x1e after `olddefconfig` with:
 #   LOCALVERSION="-jg-0-nixos", SECURITY_LOCKDOWN_LSM off (it forces MODULE_SIG on),
-#   MODULE_SIG off, IMA_APPRAISE_MODSIG off, SYSTEM_REVOCATION_LIST off.
+#   MODULE_SIG off, IMA_APPRAISE_MODSIG off, SYSTEM_REVOCATION_LIST off,
+#   UBSAN off: nixpkgs builds from the source unpacked in $dev, and GCC applies no prefix map to the file names
+#   UBSAN embeds, so Image and modules would reference $dev ("cycle detected ... output 'dev' from output 'out'",
+#   +900 MB closure), and the initrd's nuke-refs then corrupts the zstd modules that contain the path as literal
+#   bytes (raid6_pq, hence btrfs: root never ready).
 # Nothing else differs, so drivers and DT behave as on Ubuntu.
 {
   fetchFromGitHub,
