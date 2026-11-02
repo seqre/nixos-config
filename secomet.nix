@@ -41,6 +41,20 @@ in
       configurationLimit = 10;
       # Loads the DTB from hardware.deviceTree (installDeviceTree defaults to on with deviceTree.name set).
       # Windows Boot Manager is detected automatically.
+
+      # "built on" with the time, not just the date (the menu shows it after the title). The builder hardcodes %F
+      # and takes it from the store path's ctime, which `nix-store --optimise` bumps; use the mtime of the
+      # generation's profile link instead (when it was created). The builder leaves existing entry files alone
+      # (named after a hash of their original contents), so this edits each one once.
+      extraInstallCommands = ''
+        for entry in ${config.boot.loader.efi.efiSysMountPoint}/loader/entries/nixos-*.conf; do
+          gen=$(${pkgs.gnused}/bin/sed -n 's/^version Generation \([0-9]*\) .*/\1/p' "$entry")
+          link=/nix/var/nix/profiles/system-$gen-link
+          [ -n "$gen" ] && [ -L "$link" ] || continue
+          built=$(${pkgs.coreutils}/bin/date -d "@$(${pkgs.coreutils}/bin/stat -c %Y "$link")" '+%F %H:%M')
+          ${pkgs.gnused}/bin/sed -i "s/, built on [0-9-]*\( [0-9:]*\)\?$/, built on $built/" "$entry"
+        done
+      '';
     };
     efi = {
       canTouchEfiVariables = false;
