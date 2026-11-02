@@ -15,7 +15,12 @@ stdenv.mkDerivation {
   ];
   buildFlags = [ "modules" ];
 
-  installPhase = ''
-    install -Dm644 ov05c10.ko $out/lib/modules/${kernel.modDirVersion}/updates/ov05c10.ko
-  '';
+  # The kernel's modules_install, not a plain copy: nixpkgs' commonMakeFlags hook kmodigest into it, which writes the
+  # ov05c10.ko.cer that the module aggregation merges into modules.cer (and the module gets zstd-compressed like the
+  # in-tree ones).
+  installFlags = [
+    "INSTALL_MOD_PATH=${placeholder "out"}"
+    "INSTALL_MOD_DIR=updates"
+  ];
+  installTargets = [ "modules_install" ];
 }
