@@ -77,6 +77,7 @@
     entries = [
       "${config.programs.firefox.finalPackage}/share/applications/firefox.desktop"
       "${pkgs.signal-desktop}/share/applications/signal.desktop"
+      "${pkgs.zulip}/share/applications/org.zulip.Zulip.desktop"
     ];
   };
 
