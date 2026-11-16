@@ -54,7 +54,8 @@
 };
 
 &camss {
-	compatible = "qcom,x1p42100-camss";
+	/* simple-mfd: the csiphy nodes are children of camss */
+	compatible = "qcom,x1p42100-camss", "simple-mfd";
 
 	reg = <0 0x0acb6000 0 0x1000>,
 	      <0 0x0acb7000 0 0x2000>,
@@ -135,7 +136,7 @@
 			  "vfe_lite0",
 			  "vfe_lite1";
 
-	phys = <&csiphy0>, <&csiphy4>;
+	phys = <&csiphy0 PHY_TYPE_DPHY>, <&csiphy4 PHY_TYPE_DPHY>;
 	phy-names = "csiphy0", "csiphy4";
 
 	power-domains = <&camcc CAM_CC_IFE_0_GDSC>,
@@ -199,7 +200,6 @@
 &csiphy4 {
 	vdda-0p8-supply = <&vreg_l2c_0p8>;
 	vdda-1p2-supply = <&vreg_l1c_1p2>;
-	phy-type = <PHY_TYPE_DPHY>;
 
 	status = "okay";
 };
