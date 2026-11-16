@@ -15,6 +15,9 @@
         email = "git@seqre.dev";
       };
       init.defaultBranch = "main";
+      commit.gpgSign = true;
+      gpg.format = "ssh";
+      user.signingkey = "~/.ssh/id_ed25519.pub";
       pull.rebase = true;
       push.autoSetupRemote = true;
       # Remember conflict resolutions and replay them when the same conflict comes back (e.g. repeated rebases).
@@ -23,6 +26,24 @@
     };
 
     #ignores = [ ".direnv/" "result" "result-*" ];
+  };
+
+  programs.gh = {
+    enable = true;
+    settings = {
+      git_protocol = "ssh";
+    };
+  };
+
+  programs.ssh = {
+    enable = true;
+    settings = {
+      "github.com" = {
+        HostName = "github.com";
+        User = "git";
+        IdentityFile = "~/.ssh/id_ed25519";
+      };
+    };
   };
 
   # delta as git's pager for diff/log/show/blame.
@@ -90,7 +111,6 @@
     ripgrep
     fd
     jq
-    gh
     gimp
     inkscape
     libreoffice
@@ -105,11 +125,12 @@
     fzf
     opencode
     jujutsu
-    # GNOME Shell extensions: only installed here; enable/disable them in the Extensions app (kept in dconf, not
-    # managed by Home Manager).
-    gnomeExtensions.appindicator # tray icons (AppIndicator/StatusNotifierItem, e.g. Signal) in the top panel
+    gnomeExtensions.appindicator
+    telegram-desktop
     handy
     wl-clipboard
+    zulip
+    uv
   ];
 
   home.shellAliases = {
