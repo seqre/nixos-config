@@ -15,7 +15,7 @@
       url = "path:/etc/nixos/blobs/firmware";
       flake = false;
     };
-    eventually.url = "git+file:///home/seqre/dev/eventually";
+    eventually.url = "git+file:///home/seqre/dev/eventually?ref=main";
   };
 
   outputs =

@@ -1,0 +1,44 @@
+From 32e3f334df172e07781f5317725dc45cacb18607 Mon Sep 17 00:00:00 2001
+From: Marek 'seqre' Grzelak <git@seqre.dev>
+Date: Mon, 16 Nov 2026 14:36:04 +0100
+Subject: [PATCH] pinctrl: qcom: x1e80100: Add missing dual edge GPIO IRQ
+ errata flag
+
+Since the PDC wake GPIOs were enabled for x1e80100, wake-capable GPIOs
+are routed through the PDC, which cannot detect both edges:
+qcom_pdc_alloc() turns IRQ_TYPE_EDGE_BOTH into IRQ_TYPE_EDGE_RISING.
+pinctrl-msm emulates dual edge for PDC GPIOs only when the SoC data sets
+wakeirq_dual_edge_errata, which x1e80100 does not.
+
+As a result, gpio-keys only sees the rising edge of a both-edges GPIO.
+On the Acer Swift Go 14 the lid switch (tlmm 92) only reports "open",
+closing the lid never sends SW_LID and the laptop does not suspend.
+
+Set wakeirq_dual_edge_errata, as done for other SoCs with the same
+issue (e.g. "pinctrl: qcom: qcs615: Add missing dual edge GPIO IRQ
+errata flag").
+
+Tested on an Acer Swift Go 14 AI (SFG14-01), 7.2.2 with the PDC wake GPIO
+series backported: logind sees "Lid closed"
+and "Lid opened" again and closing the lid suspends.
+
+Assisted-by: Claude:claude-opus-5-5
+---
+ drivers/pinctrl/qcom/pinctrl-x1e80100.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/pinctrl/qcom/pinctrl-x1e80100.c b/drivers/pinctrl/qcom/pinctrl-x1e80100.c
+index e4c0abcd9..b4e794161 100644
+--- a/drivers/pinctrl/qcom/pinctrl-x1e80100.c
++++ b/drivers/pinctrl/qcom/pinctrl-x1e80100.c
+@@ -1837,6 +1837,7 @@ static const struct msm_pinctrl_soc_data x1e80100_pinctrl = {
+ 	.ngpios = 239,
+ 	.wakeirq_map = x1e80100_pdc_map,
+ 	.nwakeirq_map = ARRAY_SIZE(x1e80100_pdc_map),
++	.wakeirq_dual_edge_errata = true,
+ 	.egpio_func = 9,
+ };
+ 
+-- 
+2.56.0
+

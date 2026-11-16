@@ -1,0 +1,59 @@
+From 985ebcb2146d65f40f59615ebecbd2ffc4c5ae3e Mon Sep 17 00:00:00 2001
+From: Marek 'seqre' Grzelak <git@seqre.dev>
+Date: Mon, 16 Nov 2026 22:01:02 +0100
+Subject: [PATCH] drm/msm/dp: read the eDP link caps before setting the mode
+
+For eDP, the sink's link capabilities are read by msm_dp_hpd_plug_handle(),
+called from msm_dp_display_prepare_link() in .atomic_enable(). The mode,
+including the bpp, is set earlier, in .atomic_pre_enable(), and
+msm_dp_panel_get_supported_bpp() limits the bpp to what fits into
+num_lanes * link rate from link_info.
+
+On the first enable after boot link_info is still zero, so no bpp fits
+and the minimum of 18 is used: the panel is driven at 6 bpc although it
+supports 8, and gradients show visible banding. The capabilities are read
+only afterwards, and the mode keeps 18 bpp until the next full enable.
+
+Read the eDP link capabilities at the start of .atomic_pre_enable(),
+before msm_dp_display_set_mode().
+
+Tested on an Acer Swift Go 14 AI (SFG14-01, CSOT MNE507QS2-2, 8 bpc, 4 lanes
+at HBR): without this change dp_debug shows bpp = 18 after boot and 24 only
+after the panel was turned off and on again.
+
+Assisted-by: Claude:claude-opus-5-5
+---
+ drivers/gpu/drm/msm/dp/dp_display.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/dp/dp_display.c b/drivers/gpu/drm/msm/dp/dp_display.c
+index 76aee2f..b9c3db9 100644
+--- a/drivers/gpu/drm/msm/dp/dp_display.c
++++ b/drivers/gpu/drm/msm/dp/dp_display.c
+@@ -631,9 +631,6 @@ static int msm_dp_display_prepare_link(struct msm_dp_display_private *dp)
+ 
+ 	drm_dbg_dp(dp->drm_dev, "sink_count=%d\n", dp->link->sink_count);
+ 
+-	if (msm_dp_display->is_edp)
+-		msm_dp_hpd_plug_handle(dp);
+-
+ 	rc = pm_runtime_resume_and_get(&msm_dp_display->pdev->dev);
+ 	if (rc) {
+ 		DRM_ERROR("failed to pm_runtime_resume\n");
+@@ -1430,6 +1427,13 @@ void msm_dp_display_atomic_pre_enable(struct msm_dp *msm_dp_display,
+ 
+ 	dp = container_of(msm_dp_display, struct msm_dp_display_private, msm_dp_display);
+ 
++	/*
++	 * eDP reads the sink's link capabilities on enable, not on HPD. Do it
++	 * here, before msm_dp_display_set_mode() picks the bpp from them.
++	 */
++	if (msm_dp_display->is_edp)
++		msm_dp_hpd_plug_handle(dp);
++
+ 	crtc = drm_atomic_get_new_crtc_for_encoder(state, msm_dp_display->bridge->encoder);
+ 	if (!crtc)
+ 		return;
+-- 
+2.56.0
+
