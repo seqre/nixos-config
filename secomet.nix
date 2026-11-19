@@ -198,6 +198,7 @@ in
     ];
   };
 
+  services.tailscale.enable = true;
   services.eventually = {
     enable = true;
     port = 2137;
@@ -212,6 +213,12 @@ in
   environment.persistence."/persist".directories = [
     {
       directory = "/var/lib/private";
+      mode = "0700";
+    }
+    # The whole directory: tailscaled replaces tailscaled.state via temp file + rename, which a persisted single file
+    # (bind mount or symlink) can't take.
+    {
+      directory = "/var/lib/tailscale";
       mode = "0700";
     }
   ];
