@@ -93,7 +93,7 @@
   };
 
   # ~/.configuration.nix -> this file in the system flake (a live link, not a store copy). This file is owned by
-  # seqre (systemd.tmpfiles in secomet.nix), so edit it directly; apply with `sudo nixos-rebuild switch`.
+  # seqre (systemd.tmpfiles in hosts/secomet/default.nix), so edit it directly; apply with `sudo nixos-rebuild switch`.
   home.file.".configuration.nix".source = config.lib.file.mkOutOfStoreSymlink "/etc/nixos/home/seqre.nix";
 
   xdg.userDirs = {
@@ -107,7 +107,7 @@
   };
 
   # GNOME Settings → Region → Formats. Overrides the LC_* variables inside the GNOME session, so keep it in step with
-  # i18n.extraLocaleSettings in secomet.nix.
+  # i18n.extraLocaleSettings in hosts/secomet/default.nix.
   dconf.settings."org/gnome/system/locale".region = "pl_PL.UTF-8";
 
   # Personal scripts, e.g. lost-on-boot (what on the ephemeral root would be lost on reboot).

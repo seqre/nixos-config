@@ -1,7 +1,10 @@
+# Acer Swift Go 14 AI (SFG14-01, Snapdragon X x1p42100). Hardware support lives next to this file (hardware.nix,
+# camera.nix, fingerprint.nix, firmware-sync.nix, pkgs/, files/).
 {
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
@@ -21,15 +24,20 @@ let
 in
 {
   imports = [
-    ./modules/sfg14-hardware.nix
-    ./modules/camera.nix
-    ./modules/fingerprint.nix
-    ./modules/impermanence.nix
-    ./modules/firmware-sync.nix
-    ./modules/snapshots.nix
-    ./modules/printing.nix
-    ./modules/nas.nix
+    inputs.home-manager.nixosModules.home-manager
+    inputs.impermanence.nixosModules.impermanence
+    inputs.eventually.nixosModules.default
+    ./hardware.nix
+    ./camera.nix
+    ./fingerprint.nix
+    ./firmware-sync.nix
+    ../../modules/impermanence.nix
+    ../../modules/snapshots.nix
+    ../../modules/printing.nix
+    ../../modules/nas.nix
   ];
+
+  nixpkgs.hostPlatform = "aarch64-linux";
 
   # systemd-boot on the shared ESP (\EFI\systemd, kernels in \EFI\nixos, entries in \loader). NixOS never writes UEFI
   # variables: this firmware only boots entries carrying the `RC` optional data, so the "NixOS" UEFI entry was made
@@ -63,7 +71,7 @@ in
     timeout = 5;
   };
 
-  secomet.impermanence = {
+  local.impermanence = {
     enable = true;
     inherit fsUuid;
   };
@@ -106,13 +114,9 @@ in
     }
   ];
 
-  networking.hostName = "secomet";
-  networking.networkmanager = {
-    enable = true;
-    plugins = with pkgs; [
-      networkmanager-openvpn
-    ];
-  };
+  networking.networkmanager.plugins = with pkgs; [
+    networkmanager-openvpn
+  ];
 
   # Wi-Fi country PL. ath12k's firmware restarts on every resume in the world regdom (00), where all of 5 GHz is
   # passive-scan and all of 6 GHz is allowed: a full scan took 14.7 s (vs 4.8 s with PL), delaying the reconnect.
@@ -132,7 +136,6 @@ in
       | ${pkgs.util-linux}/bin/logger -t wifi-regdom
   '';
 
-  time.timeZone = "Europe/Warsaw";
   # English messages and sorting, Polish formats (dates, numbers, currency, units, paper size).
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings = lib.genAttrs [
@@ -146,13 +149,9 @@ in
     "LC_NAME"
     "LC_IDENTIFICATION"
   ] (_: "pl_PL.UTF-8");
-  # Polish (programmer) layout system-wide: GDM, Xorg and, via useXkbConfig, the text console. GNOME keeps its own
-  # per-user input sources (home/seqre.nix).
-  services.xserver.xkb.layout = "pl";
+  # The Polish layout (modules/common.nix) on the text console too. GNOME keeps its own per-user input sources
+  # (home/seqre.nix).
   console.useXkbConfig = true;
-
-  services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
 
   # /etc/shadow does not survive a reboot, so users are fully declarative. The password hash lives in /persist
   # (root-only, copied from Ubuntu's /etc/shadow at install time), not in the Nix store.
@@ -174,7 +173,7 @@ in
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "hm-backup";
-    users.seqre = import ./home/seqre.nix;
+    users.seqre = import ../../home/seqre.nix;
   };
 
   # Weekly GC of store paths not referenced by a generation from the last 14 days (old systemd-boot entries go with
@@ -187,18 +186,6 @@ in
   };
   nix.optimise.automatic = true; # weekly hard-link dedup of identical store files
 
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    trusted-users = [
-      "root"
-      "seqre"
-    ];
-  };
-
-  services.tailscale.enable = true;
   services.eventually = {
     enable = true;
     port = 2137;

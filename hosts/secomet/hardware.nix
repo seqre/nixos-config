@@ -3,18 +3,18 @@
   config,
   lib,
   pkgs,
-  acer-firmware,
+  inputs,
   ...
 }:
 
 let
-  kernel = pkgs.callPackage ../pkgs/kernel { };
+  kernel = pkgs.callPackage ./pkgs/kernel { };
   kernelPackages = pkgs.linuxPackagesFor kernel;
-  acer-ec = pkgs.callPackage ../pkgs/acer-ec { };
+  acer-ec = pkgs.callPackage ./pkgs/acer-ec { };
 in
 {
   boot.kernelPackages = kernelPackages;
-  boot.extraModulePackages = [ (kernelPackages.callPackage ../pkgs/ov05c10 { }) ];
+  boot.extraModulePackages = [ (kernelPackages.callPackage ./pkgs/ov05c10 { }) ];
 
   # Same options as Ubuntu's working entry (from the live ISO's Acer entry), plus cma=256M for the camera's
   # soft-ISP buffers. stubble.dtb_override is Ubuntu-stub specific and not needed with a plain Image.
@@ -71,13 +71,13 @@ in
   hardware.deviceTree = {
     enable = true;
     name = "qcom/x1p42100-acer-swift-go14-01.dtb";
-    dtbSource = pkgs.callPackage ../pkgs/dtb { inherit kernel; };
+    dtbSource = pkgs.callPackage ./pkgs/dtb { inherit kernel; };
   };
 
   # The DSP/GPU drivers are modules that load from the root filesystem here (not from the initrd as on Ubuntu),
   # so the firmware only has to be in the system closure.
   hardware.enableRedistributableFirmware = true;
-  hardware.firmware = [ (pkgs.callPackage ../pkgs/acer-firmware.nix { src = acer-firmware; }) ];
+  hardware.firmware = [ (pkgs.callPackage ./pkgs/acer-firmware.nix { src = inputs.acer-firmware; }) ];
 
   hardware.bluetooth.enable = true;
 

@@ -18,7 +18,7 @@
 
 let
   libcamera = pkgs.libcamera.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [ ../pkgs/libcamera/0001-softisp-radial-lens-shading-correction.patch ];
+    patches = (old.patches or [ ]) ++ [ ./pkgs/libcamera/0001-softisp-radial-lens-shading-correction.patch ];
   });
   pipewire = pkgs.pipewire.override { inherit libcamera; };
   wireplumber = pkgs.wireplumber.override { inherit pipewire; };
@@ -32,7 +32,7 @@ in
 
   environment.systemPackages = [ libcamera ]; # cam, libcamerify
 
-  environment.etc."libcamera/ipa/simple/ov05c10.yaml".source = ../files/ov05c10.yaml;
+  environment.etc."libcamera/ipa/simple/ov05c10.yaml".source = ./files/ov05c10.yaml;
 
   # nixpkgs' libcamera looks for tuning files in its own store path only. sessionVariables also reach the systemd
   # user manager (PAM), so PipeWire and WirePlumber see it too.

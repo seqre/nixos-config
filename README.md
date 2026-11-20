@@ -1,4 +1,31 @@
-# nixos-secomet
+# nixos-config
+
+NixOS for seqre's laptops. On each machine this repo is `/etc/nixos`; `sudo nixos-rebuild switch` builds the
+`nixosConfigurations` entry named after the hostname.
+
+| Host       | Machine                                                       |
+|------------|---------------------------------------------------------------|
+| `secomet`  | Acer Swift Go 14 AI (SFG14-01, Snapdragon X x1p42100), aarch64 |
+| `secorbit` | x86_64 laptop with NVIDIA                                     |
+
+## Layout
+
+- `flake.nix`: every directory in `hosts/` becomes a host (`mkHost`): `modules/common.nix` + `hosts/<name>` +
+  `networking.hostName = <name>`. Modules get `inputs` and `self` as arguments. Adding a laptop = adding
+  `hosts/<name>/default.nix`.
+- `hosts/<name>/default.nix`: the host: `nixpkgs.hostPlatform`, the flake input modules it uses (home-manager,
+  impermanence, ...), which `modules/` it imports, filesystems, users, everything machine-specific. Hardware support
+  only one machine needs lives next to it (`hosts/secomet/{hardware,camera,fingerprint,firmware-sync}.nix`, `pkgs/`,
+  `files/`).
+- `modules/common.nix`: imported by every host (Nix settings, time zone, keyboard layout, GNOME, NetworkManager,
+  Tailscale).
+- `modules/*.nix`: opt-in shared modules (impermanence, snapshots, printing, NAS).
+- `home/seqre.nix`: Home Manager for seqre (secomet).
+
+Inputs are fetched lazily: `acer-firmware` and `eventually` exist only on secomet, and secorbit builds without them.
+Don't run a bare `nix flake update` on secorbit; name the inputs (`nix flake update nixpkgs home-manager impermanence`).
+
+## secomet
 
 NixOS for the Acer Swift Go 14 AI (SFG14-01, Snapdragon X x1p42100), on btrfs (`nvme0n1p5`) with the ESP
 (`nvme0n1p1`, grown to 2.2 GB) shared with Windows. It was first installed next to Ubuntu, where the hardware was
@@ -12,7 +39,7 @@ owned by root. Edit with sudo, apply with `sudo nixos-rebuild switch`.
 the build as the flake input `acer-firmware` (`path:/etc/nixos/blobs/firmware`, pinned by hash in `flake.lock`).
 After changing those files by hand, run `sudo nix flake update acer-firmware`, or the build fails with a hash mismatch.
 
-## Layout on disk
+### Layout on disk
 
 | Subvolume                 | Mounted at          |
 |---------------------------|---------------------|
@@ -28,7 +55,7 @@ After changing those files by hand, run `sudo nix flake update acer-firmware`, o
 NixOS generations are the rollback mechanism for the system; snapper covers `/home` and `/persist` (see Snapshots).
 `nix-collect-garbage -d` deletes all old NixOS generations.
 
-## Impermanence
+### Impermanence
 
 - The initrd unit `rollback-root` moves `@nixos` to `@nixos-old/<mtime>` and creates an empty `@nixos` before
   `/sysroot` is mounted.
@@ -44,7 +71,7 @@ NixOS generations are the rollback mechanism for the system; snapper covers `/ho
   recreates anyway. `-t` adds tmp and caches, `-s` gives per-directory counts, `-n` prints a persistence snippet,
   `-a` turns off all filtering. Extra ignore globs: `~/.config/lost-on-boot/ignore`.
 
-## Boot path
+### Boot path
 
 1. UEFI **`Boot0003` "NixOS (systemd-boot)"** → `\EFI\systemd\systemd-bootaa64.efi`. Created by hand with the `RC`
    optional data this firmware requires:
@@ -59,29 +86,29 @@ NixOS generations are the rollback mechanism for the system; snapper covers `/ho
 4. The `cutmem` workaround Ubuntu's GRUB applied is not needed: RAM on this 16 GB model ends at `0xbffffffff`,
    below the cut range.
 
-## What's where
+### What's where
 
-- `pkgs/kernel/`: jg 7.2.2-jg-0 (same source as Ubuntu's kernel) with Ubuntu's config minus module signing and the
+- `hosts/secomet/pkgs/kernel/`: jg 7.2.2-jg-0 (same source as Ubuntu's kernel) with Ubuntu's config minus module signing and the
   lockdown LSM, plus two patches: PS8830 retimer reset polarity, x1p42100 CAMSS.
-- `pkgs/dtb/`: kernel DTB + camera, fingerprint and cleanup overlays + the BT property deletions. Byte-identical to
+- `hosts/secomet/pkgs/dtb/`: kernel DTB + camera, fingerprint and cleanup overlays + the BT property deletions. Byte-identical to
   Ubuntu's `/boot/dtb-cleanup`.
-- `pkgs/ov05c10/`: the camera sensor driver (out-of-tree module).
-- `pkgs/acer-firmware.nix`: ADSP (battery), CDSP, GPU zap firmware.
-- `pkgs/acer-ec/`: `ec-rw`, `ec-dump`, `acer-ec-hostmode` (keyboard backlight).
-- `modules/sfg14-hardware.nix`: kernel params, initrd modules, DT, firmware, udev, EC service.
+- `hosts/secomet/pkgs/ov05c10/`: the camera sensor driver (out-of-tree module).
+- `hosts/secomet/pkgs/acer-firmware.nix`: ADSP (battery), CDSP, GPU zap firmware.
+- `hosts/secomet/pkgs/acer-ec/`: `ec-rw`, `ec-dump`, `acer-ec-hostmode` (keyboard backlight).
+- `hosts/secomet/hardware.nix`: kernel params, initrd modules, DT, firmware, udev, EC service.
 - `modules/impermanence.nix`: rollback unit + persisted paths.
-- `modules/camera.nix`: libcamera with the lens shading patch (`pkgs/libcamera/`) for PipeWire/WirePlumber/`cam`,
-  OV05C10 tuning file (`files/ov05c10.yaml`).
-- `modules/fingerprint.nix`: SDCP libfprint/fprintd.
+- `hosts/secomet/camera.nix`: libcamera with the lens shading patch (`hosts/secomet/pkgs/libcamera/`) for PipeWire/WirePlumber/`cam`,
+  OV05C10 tuning file (`hosts/secomet/files/ov05c10.yaml`).
+- `hosts/secomet/fingerprint.nix`: SDCP libfprint/fprintd.
 - `modules/printing.nix`: CUPS + ipp-usb (IPP over USB), with a declared PostScript queue for the HP M553 (it drops PDF
   jobs); the PPD comes from hplip, but hplip itself is not installed.
-- `modules/firmware-sync.nix`, `modules/snapshots.nix`: see below.
-- `secomet.nix`: the host config: boot loader, filesystems, GNOME, users, Home Manager, Nix GC.
+- `hosts/secomet/firmware-sync.nix`, `modules/snapshots.nix`: see below.
+- `hosts/secomet/default.nix`: the host config: boot loader, filesystems, users, Home Manager, Nix GC.
 - `home/seqre.nix`: Home Manager config for seqre, linked as `~/.configuration.nix`; owned by seqre (editable without sudo), applying still needs sudo.
 
-## Firmware sync from Windows
+### Firmware sync from Windows
 
-`modules/firmware-sync.nix`: `qcom-firmware-sync.timer` (daily; a missed run happens at the next boot) mounts Windows read-only,
+`hosts/secomet/firmware-sync.nix`: `qcom-firmware-sync.timer` (daily; a missed run happens at the next boot) mounts Windows read-only,
 takes the newest DriverStore copy of each firmware file (same list and pick as Ubuntu's `qcom-firmware-extract` 21)
 and compares it with `blobs/firmware`. On a change it updates `blobs/firmware`, re-locks the `acer-firmware` input and runs
 `nixos-rebuild boot` on the current default generation's recorded flake source (`/nix/var/nix/profiles/system/flake-source`,
@@ -89,7 +116,7 @@ every generation has one) with only the firmware swapped, so uncommitted edits i
 automatically. New firmware is used from the next boot. Logs: `journalctl -u qcom-firmware-sync`. Plain NTFS only
 (no BitLocker).
 
-## Snapshots
+### Snapshots
 
 `modules/snapshots.nix`: snapper configs `home` (`/home`, seqre may use it) and `persist` (`/persist`), hourly
 timeline, kept 5 hourly / 7 daily / 2 weekly / 1 monthly. Snapshots are in `/home/.snapshots` and
@@ -98,12 +125,12 @@ timeline, kept 5 hourly / 7 daily / 2 weekly / 1 monthly. Snapshots are in `/hom
 **Future:** consider btrbk: the same local snapshots plus incremental `btrfs send` to another disk/machine, i.e.
 real backups (snapper snapshots live on the same disk).
 
-## Garbage collection
+### Garbage collection
 
 `nix-gc.timer` (weekly, catches up after downtime): `nix-collect-garbage --delete-older-than 14d`; `nix-optimise.timer`
 (weekly) hard-links identical store files.
 
-## Commands
+### Commands
 
     sudo nixos-rebuild switch
 

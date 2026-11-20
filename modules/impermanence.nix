@@ -13,12 +13,12 @@
 }:
 
 let
-  cfg = config.secomet.impermanence;
+  cfg = config.local.impermanence;
   device = "/dev/disk/by-uuid/${cfg.fsUuid}";
   deviceUnit = "dev-disk-by\\x2duuid-${lib.replaceStrings [ "-" ] [ "\\x2d" ] cfg.fsUuid}.device";
 in
 {
-  options.secomet.impermanence = {
+  options.local.impermanence = {
     enable = lib.mkEnableOption "ephemeral btrfs root with state in /persist";
     fsUuid = lib.mkOption { type = lib.types.str; };
     rootSubvol = lib.mkOption {
