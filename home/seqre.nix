@@ -15,9 +15,10 @@
         email = "git@seqre.dev";
       };
       init.defaultBranch = "main";
+      # OpenPGP signing with the git key (git@seqre.dev), restored from ~/gpg/GPGs.
       commit.gpgSign = true;
-      gpg.format = "ssh";
-      user.signingkey = "~/.ssh/id_ed25519.pub";
+      gpg.format = "openpgp";
+      user.signingkey = "20DB66242E69063755614669513C70F034068120";
       pull.rebase = true;
       push.autoSetupRemote = true;
       # Remember conflict resolutions and replay them when the same conflict comes back (e.g. repeated rebases).
@@ -33,6 +34,16 @@
     settings = {
       git_protocol = "ssh";
     };
+  };
+
+  # Keys are imported by hand (mutable keyring/trustdb, HM defaults); ~/.gnupg uses keyboxd (common.conf).
+  programs.gpg.enable = true;
+
+  # gpg-agent for GPG only (socket-activated); SSH stays with GNOME's gcr-ssh-agent. pinentry-gnome3 can save
+  # passphrases in the GNOME keyring ("Save in password manager").
+  services.gpg-agent = {
+    enable = true;
+    pinentry.package = pkgs.pinentry-gnome3;
   };
 
   programs.ssh = {
