@@ -132,6 +132,8 @@
     wl-clipboard
     zulip
     uv
+    mosh
+    waypipe
   ];
 
   home.shellAliases = {
