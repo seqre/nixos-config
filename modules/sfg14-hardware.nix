@@ -64,9 +64,6 @@ in
     "ubwc_config"
     "socinfo"
   ];
-  # Root shell in the initrd if mounting root fails (root has no password otherwise). Bring-up only: turn off
-  # once NixOS boots reliably.
-  boot.initrd.systemd.emergencyAccess = true;
 
   # i2c-dev for the EC tools.
   boot.kernelModules = [ "i2c-dev" ];
