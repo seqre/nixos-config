@@ -145,10 +145,13 @@
     uv
     mosh
     waypipe
+    wakeonlan
   ];
 
   home.shellAliases = {
     j = "just";
+    # Wake-on-LAN for secorbit through its USB-C hub NIC (hosts/secorbit/always-on.nix). Works on the home LAN only.
+    wake-secorbit = "wakeonlan 10:98:19:55:18:35";
   };
 
   home.stateVersion = "26.11";
