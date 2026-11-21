@@ -15,6 +15,7 @@ in
     [
       inputs.impermanence.nixosModules.impermanence
       ./hardware.nix
+      ./always-on.nix
       ../../modules/nas.nix
     ];
 
@@ -189,10 +190,7 @@ in
   programs.mosh.enable = true;   # mosh otwiera UDP 60000-61000 globalnie, przenieś to na tailscale0:
   networking.firewall.allowedUDPPortRanges = lib.mkForce [ ];
 
-  services.logind.lidSwitch = "ignore";
-  services.logind.lidSwitchExternalPower = "ignore";
-  systemd.targets.sleep.enable = false;
-  systemd.targets.suspend.enable = true;
+  # Lid, Wake-on-LAN and suspend-when-idle: always-on.nix.
 
   services.sunshine = { enable = false; autoStart = true; capSysAdmin = true; openFirewall = false; };
   networking.firewall.interfaces."tailscale0" = {
