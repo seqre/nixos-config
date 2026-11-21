@@ -160,7 +160,6 @@ in
     gnome-terminal
     jq
     smartmontools
-    intel-media-driver
     waypipe
   ];
 
